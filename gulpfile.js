@@ -48,11 +48,11 @@ function devScripts() {
 }
 
 function devImages() {
-  return src(`${options.paths.src.img}/**/*`).pipe(dest(options.paths.dist.img));
+  return src(`${options.paths.src.img}/**/*`, { encoding: false }).pipe(dest(options.paths.dist.img));
 }
 
 function devFonts() {
-  return src(`${options.paths.src.fonts}/**/*`).pipe(dest(options.paths.dist.fonts));
+  return src(`${options.paths.src.fonts}/**/*`, { encoding: false }).pipe(dest(options.paths.dist.fonts));
 }
 
 function watchFiles() {
@@ -100,7 +100,7 @@ function prodImages() {
 }
 
 function prodFonts() {
-  return src(`${options.paths.src.fonts}/**/*`).pipe(dest(options.paths.build.fonts));
+  return src(`${options.paths.src.fonts}/**/*`, { encoding: false }).pipe(dest(options.paths.build.fonts));
 }
 
 function prodClean() {
