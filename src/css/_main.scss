@@ -1,0 +1,11 @@
+body {
+  @apply bg-[#F7F7FF];
+}
+
+.container {
+  @apply relative mx-auto flex h-screen w-screen items-center justify-center p-4;
+}
+
+.canvas-wrapper {
+  @apply relative aspect-square h-auto max-h-full w-auto max-w-full flex-1 overflow-hidden rounded-lg bg-white shadow-md;
+}
