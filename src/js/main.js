@@ -18,7 +18,6 @@ const DEFAULT_SHAPE_OBJECT_DIFF = 0.25;
   window.addEventListener("resize", resizeCanvas, false);
 
   resizeCanvas();
-  startListen();
 })();
 
 function resizeCanvas() {
@@ -27,6 +26,8 @@ function resizeCanvas() {
     canvas.setHeight(canvasWrapper.clientHeight);
 
     canvas.requestRenderAll();
+
+    startListen();
   }
 }
 
@@ -52,6 +53,10 @@ function stopListen() {
   canvas.off("selection:created");
   canvas.off("selection:updated");
   canvas.off("selection:cleared");
+}
+
+function clearCanvas() {
+  canvas.clear();
 }
 
 function objectAdded(e) {
@@ -88,6 +93,7 @@ function eraserMode() {
 }
 
 function addRectangle() {
+  unsetDrawingMode();
   const size = DEFAULT_SHAPE_OBJECT_DIFF * canvas.getWidth();
   const obj = new fabric.Rect({
     fill: "red",
@@ -101,6 +107,7 @@ function addRectangle() {
 }
 
 function addEllipse() {
+  unsetDrawingMode();
   const size = DEFAULT_SHAPE_OBJECT_DIFF * canvas.getWidth();
   const obj = new fabric.Ellipse({
     fill: "blue",
@@ -116,6 +123,7 @@ function addEllipse() {
 }
 
 function addTriangle() {
+  unsetDrawingMode();
   const size = DEFAULT_SHAPE_OBJECT_DIFF * canvas.getWidth();
   const obj = new fabric.Triangle({
     fill: "yellow",
