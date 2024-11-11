@@ -1,9 +1,6 @@
 window.addEventListener("DOMContentLoaded", () => {
-  console.log("Loaded Scripts");
+  sendMessage("commonMessage", { ready: true });
 });
-
-const canvas = new fabric.Canvas("canvas");
-const canvasWrapper = document.getElementById("canvas-wrapper");
 
 const DEFAULT_SELECTION = {
   transparentCorners: false,
@@ -11,8 +8,15 @@ const DEFAULT_SELECTION = {
   cornerColor: "#7168F8",
   cornerStyle: "circle",
 };
-
+const DEFAULT_COLOR = "#333";
 const DEFAULT_SHAPE_OBJECT_DIFF = 0.25;
+
+const canvas = new fabric.Canvas("canvas", {
+  selectionBorderColor: DEFAULT_SELECTION.borderColor,
+  selectionLineWidth: 1,
+  preserveObjectStacking: true,
+});
+const canvasWrapper = document.getElementById("canvas-wrapper");
 
 (function () {
   window.addEventListener("resize", resizeCanvas, false);
@@ -39,8 +43,8 @@ function sendMessage(handler, value) {
 
 function startListen() {
   canvas.on("object:added", objectAdded);
-  canvas.on("object:modified", (e) => sendMessage("canvasCommonMessage", e));
-  canvas.on("object:removed", (e) => sendMessage("canvasCommonMessage", e));
+  canvas.on("object:modified", (e) => sendMessage("canvasObjectMessage", e));
+  canvas.on("object:removed", (e) => sendMessage("canvasObjectMessage", e));
   canvas.on("selection:created", (e) => sendMessage("canvasSelectionMessage", e));
   canvas.on("selection:updated", (e) => sendMessage("canvasSelectionMessage", e));
   canvas.on("selection:cleared", (e) => sendMessage("canvasSelectionMessage", e));
@@ -55,13 +59,17 @@ function stopListen() {
   canvas.off("selection:cleared");
 }
 
+function fireEvent(e, object) {
+  canvas.fire(e, { target: object });
+}
+
 function clearCanvas() {
   canvas.clear();
 }
 
 function objectAdded(e) {
   e.target.set({ ...DEFAULT_SELECTION });
-  sendMessage("canvasCommonMessage", e);
+  sendMessage("canvasObjectMessage", e);
 }
 
 function setDrawingMode() {
@@ -74,29 +82,56 @@ function unsetDrawingMode() {
   canvas.isDrawingMode = false;
 }
 
-function brushMode() {
+function discardActiveObject() {
+  canvas.discardActiveObject();
+  canvas.requestRenderAll();
+}
+
+function deleteActiveObject() {
+  canvas.remove(canvas.getActiveObject());
+  canvas.getActiveObjects().forEach((obj) => {
+    canvas.remove(obj);
+  });
+  canvas.discardActiveObject().renderAll();
+}
+
+async function cloneObject() {
+  if (canvas.getActiveObjects().length !== 1) return;
+
+  const cloned = await canvas.getActiveObjects()[0].clone();
+  canvas.add(cloned);
+  cloned.set({
+    left: cloned.left + 10,
+    top: cloned.top + 10,
+  });
+
+  canvas.setActiveObject(cloned);
+  canvas.requestRenderAll();
+}
+
+function brushMode(opt) {
   setDrawingMode();
   canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-  canvas.freeDrawingBrush.color = "#333";
-  canvas.freeDrawingBrush.width = "2";
+  canvas.freeDrawingBrush.color = opt?.color || DEFAULT_COLOR;
+  canvas.freeDrawingBrush.width = Number(opt?.width || 2);
   canvas.freeDrawingBrush.strokeLineCap = "round";
-  canvas.freeDrawingBrush.strokeLineJoin = "bevel";
+  canvas.freeDrawingBrush.strokeLineJoin = "round";
 }
 
 function eraserMode() {
   setDrawingMode();
   canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
   canvas.freeDrawingBrush.color = "#FFF";
-  canvas.freeDrawingBrush.width = "10";
+  canvas.freeDrawingBrush.width = 5;
   canvas.freeDrawingBrush.strokeLineCap = "butt";
   canvas.freeDrawingBrush.strokeLineJoin = "bevel";
 }
 
-function addRectangle() {
+function addRectangle(color) {
   unsetDrawingMode();
   const size = DEFAULT_SHAPE_OBJECT_DIFF * canvas.getWidth();
   const obj = new fabric.Rect({
-    fill: "red",
+    fill: color || DEFAULT_COLOR,
     width: size,
     height: size,
     left: (canvas.width - size) / 2,
@@ -106,11 +141,11 @@ function addRectangle() {
   canvas.setActiveObject(obj);
 }
 
-function addEllipse() {
+function addEllipse(color) {
   unsetDrawingMode();
   const size = DEFAULT_SHAPE_OBJECT_DIFF * canvas.getWidth();
   const obj = new fabric.Ellipse({
-    fill: "blue",
+    fill: color || DEFAULT_COLOR,
     width: size,
     height: size,
     left: (canvas.width - size) / 2,
@@ -122,11 +157,11 @@ function addEllipse() {
   canvas.setActiveObject(obj);
 }
 
-function addTriangle() {
+function addTriangle(color) {
   unsetDrawingMode();
   const size = DEFAULT_SHAPE_OBJECT_DIFF * canvas.getWidth();
   const obj = new fabric.Triangle({
-    fill: "yellow",
+    fill: color || DEFAULT_COLOR,
     width: size,
     height: size,
     left: (canvas.width - size) / 2,
@@ -134,4 +169,51 @@ function addTriangle() {
   });
   canvas.add(obj);
   canvas.setActiveObject(obj);
+}
+
+function getActiveObjectIndex() {
+  return canvas.getObjects().indexOf(canvas.getActiveObject());
+}
+
+function updateSelectedShapeObject(type, opt) {
+  if (canvas.getActiveObjects().length !== 1) return;
+
+  console.log(type, opt);
+
+  // canvas
+  //   .getActiveObjects()
+  //   .filter((obj) => obj.type === type)
+  //   .forEach((obj) => obj.set({ ...opt }));
+
+  // canvas.requestRenderAll();
+}
+
+function moveObjectBack() {
+  if (!canvas || !canvas.getActiveObject()) return;
+
+  const objectIndex = getActiveObjectIndex();
+  if (typeof objectIndex !== "number") return;
+
+  const isObjectAlreadyOnBack = canvas ? objectIndex === 0 : true;
+  if (isObjectAlreadyOnBack) return;
+
+  canvas.moveObjectTo(canvas.getActiveObject(), objectIndex - 1);
+  canvas.requestRenderAll();
+
+  fireEvent("object:modified", canvas.getActiveObjects()[0]);
+}
+
+function moveObjectFront() {
+  if (!canvas || !canvas.getActiveObject()) return;
+
+  const objectIndex = getActiveObjectIndex();
+  if (typeof objectIndex !== "number") return;
+
+  const isObjectAlreadyOnFront = canvas ? objectIndex === canvas.getObjects().length - 1 : true;
+  if (isObjectAlreadyOnFront) return;
+
+  canvas.moveObjectTo(canvas.getActiveObject(), objectIndex + 1);
+  canvas.requestRenderAll();
+
+  fireEvent("object:modified", canvas.getActiveObjects()[0]);
 }
